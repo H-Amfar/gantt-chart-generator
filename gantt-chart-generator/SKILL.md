@@ -1,6 +1,10 @@
 ---
 name: gantt-chart-generator
-description: 生成横道图（甘特图）与项目进度计划。当用户需要制作/生成横道图、甘特图、项目进度表、施工进度计划、排期表、里程碑计划、工程进度网络图，或需要按任务依赖关系（FS/SS/FF/SF）自动排程、标注关键节点与里程碑、计算关键路径与浮动时间、对比基线计划、导出进度图表（HTML/PNG/Word/Excel/CSV/TXT/JSON/GANTT）时使用。支持从对话描述、CSV、Excel(.xlsx)、JSON 生成，功能对标 Microsoft Project。
+version: 1.2.0
+display_name: 横道图生成器
+display_name_en: Gantt Chart Generator
+description_zh: 生成横道图（甘特图）与项目进度计划。当用户需要制作/生成横道图、甘特图、项目进度表、施工进度计划、排期表、里程碑计划、工程进度网络图，或需要按任务依赖关系（FS/SS/FF/SF）自动排程、标注关键节点与里程碑、计算关键路径与浮动时间、对比基线计划、导出进度图表（HTML/PNG/Word/Excel/CSV/TXT/JSON/GANTT）时使用。支持从对话描述、CSV、Excel(.xlsx)、JSON 生成，功能对标 Microsoft Project。
+description_en: Generate professional Gantt charts and project schedules. Use when the user needs to create Gantt charts, progress plans, construction schedules, milestone plans, or requires automatic scheduling by task dependencies (FS/SS/FF/SF), critical path analysis, total float, baseline comparison, or exporting to HTML/PNG/Word/Excel/CSV/TXT/JSON/GANTT. Supports input from conversation, CSV, Excel (.xlsx) and JSON, on par with Microsoft Project core scheduling.
 ---
 
 # 横道图生成器（Gantt Chart Generator）
