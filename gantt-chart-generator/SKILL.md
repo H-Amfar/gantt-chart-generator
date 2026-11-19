@@ -30,10 +30,11 @@ description: 生成横道图（甘特图）与项目进度计划。当用户需�
 
 ## 二、快速开始
 
-脚本位于本 skill 的 `scripts/` 目录。默认使用受管 Python 环境：
+脚本位于本 skill 的 `scripts/` 目录。任何 Python 3.9+ 均可运行
+（`openpyxl` 用于读 xlsx，`matplotlib` 用于出 PNG，缺哪个就补装哪个）：
 
 ```bash
-PY="C:/Users/yt947/.workbuddy/binaries/python/envs/default/Scripts/python.exe"
+PY=python   # 或指向任意可用的 python 可执行文件
 SKILL="<本 skill 目录>/scripts"
 
 # 1) 只出交互式 HTML
@@ -52,9 +53,7 @@ SKILL="<本 skill 目录>/scripts"
 ### 依赖安装（首次使用或换机器）
 
 ```bash
-"C:/Users/yt947/.workbuddy/binaries/python/versions/3.13.12/python.exe" -m venv "C:/Users/yt947/.workbuddy/binaries/python/envs/default"
-"C:/Users/yt947/.workbuddy/binaries/python/envs/default/Scripts/python.exe" -m pip install \
-  -i https://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com matplotlib openpyxl
+python -m pip install -i https://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com matplotlib openpyxl
 ```
 
 ---
@@ -137,6 +136,17 @@ SKILL="<本 skill 目录>/scripts"
 - 浮动为 0 的任务串成**关键路径**，HTML 中红色高亮，PNG 中红色描边
 
 **摘要任务**：其起止日期与工期由子任务自动汇总，进度按工期加权平均。
+
+### 自动配色与自适应渲染（无需配置）
+
+- **按阶段自动配色**：同一顶级阶段（WBS 层级分组）下的普通任务自动共用一个色相，
+  视觉上自然成组；调色板刻意避开关键路径红、已完成绿、里程碑琥珀等语义色，
+  相邻阶段色相差拉开。数据里 `颜色` 列显式指定的颜色优先级最高。
+- **行高自适应**：任务数量多时行高、条形、菱形尺寸自动压缩（32→20px 四档），
+  保证一屏尽量放下全部任务；浏览器窗口内自动生效。
+- **线条宽度自适应**：依赖线与箭头随时间轴缩放密度自动加粗/变细
+  （放大视图线条更醒目，缩小视图避免糊成一团），关键路径线恒比普通线粗约 45%。
+  HTML 与「导出 PNG」按钮产出的图片行为一致。
 
 ---
 

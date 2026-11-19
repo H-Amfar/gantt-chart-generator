@@ -13,6 +13,7 @@
     --today:#ef4444; --weekend:#f8fafc;
     --radius:8px;
     --row-h:32px; --head-h:54px;
+    --bar-h:16px;
     --font:"Microsoft YaHei","PingFang SC","Hiragino Sans GB","Helvetica Neue",Arial,sans-serif;
   }
   *{box-sizing:border-box;margin:0;padding:0}
@@ -126,7 +127,7 @@
   .bar-row.weekend-bg{background:var(--weekend)}
   .bar-row.hidden-row{display:none}
 
-  .bar{position:absolute;height:16px;top:8px;border-radius:4px;cursor:grab;
+  .bar{position:absolute;height:var(--bar-h);top:calc((var(--row-h) - var(--bar-h))/2);border-radius:4px;cursor:grab;
     box-shadow:0 1px 2px rgba(15,23,42,.16);transition:box-shadow .15s,filter .15s;z-index:3}
   .bar:hover{box-shadow:0 3px 8px rgba(15,23,42,.24);filter:brightness(1.05)}
   .bar.dragging{cursor:grabbing;opacity:.85;box-shadow:0 6px 16px rgba(15,23,42,.35);z-index:20}
@@ -137,22 +138,23 @@
     font-size:11px;color:var(--text-2);white-space:nowrap;pointer-events:none}
   .bar.inline .bar-label{left:6px;color:#fff;font-weight:600;text-shadow:0 1px 2px rgba(0,0,0,.3)}
 
-  .bar.summary-bar{height:10px;top:11px;border-radius:2px;background:#334155}
+  .bar.summary-bar{height:calc(var(--row-h)*0.31);top:calc(var(--row-h)*0.345);border-radius:2px;background:#334155}
   .bar.summary-bar .cap{position:absolute;bottom:-4px;width:0;height:0;
     border-left:5px solid transparent;border-right:5px solid transparent;border-top:6px solid #334155}
   .bar.summary-bar .cap.l{left:0}
   .bar.summary-bar .cap.r{right:0}
   .bar.summary-bar .fill{display:none}
 
-  .ms{position:absolute;width:15px;height:15px;top:8px;transform:rotate(45deg);
+  .ms{position:absolute;width:calc(var(--row-h)*0.47);height:calc(var(--row-h)*0.47);
+    top:calc(var(--row-h)*0.265);transform:rotate(45deg);
     cursor:grab;border-radius:2px;box-shadow:0 1px 3px rgba(15,23,42,.3);z-index:4}
   .ms:hover{filter:brightness(1.1)}
   .ms.dragging{opacity:.85;z-index:20}
   .ms.critical{outline:1.5px solid #991b1b;outline-offset:1px}
   .ms-label{position:absolute;font-size:11px;font-weight:600;color:#92400e;
-    white-space:nowrap;top:11px;pointer-events:none;z-index:4}
+    white-space:nowrap;top:calc(var(--row-h)*0.34);pointer-events:none;z-index:4}
 
-  .baseline-bar{position:absolute;height:5px;top:22px;border-radius:2px;
+  .baseline-bar{position:absolute;height:calc(var(--row-h)*0.16);top:calc(var(--row-h)*0.69);border-radius:2px;
     background:var(--line-strong);opacity:.85;z-index:1}
 
   .today-line{position:absolute;top:0;bottom:0;width:2px;background:var(--today);
@@ -338,8 +340,23 @@
 const DATA = /*__GANTT_DATA__*/ {"project":{},"tasks":[]};
 
 const VIEW_PX = { day:34, week:12.2, month:4.2, quarter:1.7 };
-const ROW_H = 32, HEAD_H = 54, TOP_ROW_H = 27;
+let ROW_H = 32;          // 行高随任务数量自适应（calcRowH），CSS 变量 --row-h 同步
+const HEAD_H = 54, TOP_ROW_H = 27;
 const MS = 86400000;
+
+/* 行高自适应：任务多时自动压缩行高，保证一屏尽量放下全部任务 */
+function calcRowH(){
+  const n = S.tasks.length;
+  if(n<=14) return 32;
+  if(n<=28) return 28;
+  if(n<=48) return 24;
+  return 20;
+}
+/* 依赖线宽自适应：随时间轴密度（pxPerDay）缩放，缩放越大线越粗、越密越细 */
+function depWidth(crit){
+  const base = Math.max(1, Math.min(2.4, 0.8 + S.pxPerDay/24));
+  return crit ? Math.min(3.2, base*1.45) : base;
+}
 
 const S = {
   view: 'auto',
@@ -539,6 +556,9 @@ function barW(s,e){ return Math.max(3, (diffD(s,e)+1)*S.pxPerDay - 2); }
 
 /* ---------------- 渲染 ---------------- */
 function render(){
+  ROW_H = calcRowH();
+  document.documentElement.style.setProperty('--row-h', ROW_H+'px');
+  document.documentElement.style.setProperty('--bar-h', Math.round(ROW_H*0.5)+'px');
   const scale = buildScale();
   const W = scale.width;
   const canvas = document.getElementById('rightCanvas');
@@ -715,11 +735,12 @@ function drawDeps(rows){
 
   const idx={}; rows.forEach((t,i)=>idx[t.id]=i);
   let out='';
+  // 箭头尺寸用 markerUnits=strokeWidth（默认）自动随线宽缩放
   const defs=`<defs>
-    <marker id="ar" markerWidth="7" markerHeight="7" refX="6" refY="3" orient="auto">
-      <path d="M0,0 L6,3 L0,6 z" fill="#64748b"/></marker>
-    <marker id="arc" markerWidth="7" markerHeight="7" refX="6" refY="3" orient="auto">
-      <path d="M0,0 L6,3 L0,6 z" fill="#dc2626"/></marker>
+    <marker id="ar" markerWidth="5.5" markerHeight="5.5" refX="4.8" refY="2.5" orient="auto">
+      <path d="M0,0 L5,2.5 L0,5 z" fill="#64748b"/></marker>
+    <marker id="arc" markerWidth="5.5" markerHeight="5.5" refX="4.8" refY="2.5" orient="auto">
+      <path d="M0,0 L5,2.5 L0,5 z" fill="#dc2626"/></marker>
   </defs>`;
 
   rows.forEach(t=>{
@@ -745,8 +766,9 @@ function drawDeps(rows){
         const mid = Math.max(x1,x2)+off*2.2;
         path=`M${x1},${y1} H${mid} V${y2} H${x2}`;
       }
+      const wCrit = depWidth(isCrit);
       out+=`<path d="${path}" fill="none" stroke="${isCrit?'#dc2626':'#64748b'}"
-        stroke-width="${isCrit?1.8:1.2}" marker-end="url(#${isCrit?'arc':'ar'})"
+        stroke-width="${wCrit.toFixed(2)}" marker-end="url(#${isCrit?'arc':'ar'})"
         opacity="${isCrit?0.95:0.72}"/>`;
     });
   });
@@ -954,7 +976,7 @@ function renderStats(){
 }
 function renderLegend(){
   document.getElementById('legend').innerHTML = [
-    ['<i style="background:#3B82F6"></i>','普通任务'],
+    ['<i style="background:#2563EB"></i>','普通任务（按阶段自动配色）'],
     ['<i style="background:#334155"></i>','摘要/阶段'],
     ['<i class="dia" style="background:#B45309"></i>','里程碑（关键节点）'],
     ['<i style="background:#DC2626"></i>','关键路径'],
@@ -1394,25 +1416,26 @@ function exportPNG(){
     g.textAlign='left';
     g.fillText(clip(t.assignee||'',60,g), OX+LEFT-26, y+ROW/2);
 
-    // 条形
+    // 条形（尺寸随行高自适应）
     const cy=y+ROW/2;
+    const bh=Math.round(ROW*0.5);
     const color = (S.showCritical&&t.critical)? '#DC2626' : t.color;
     if(t.type==='summary'){
-      const l=OX+LEFT+X(t._start), w=barW(t._start,t._end);
-      g.fillStyle='#334155'; g.fillRect(l,cy-4,w,8);
-      g.beginPath(); g.moveTo(l,cy+4); g.lineTo(l+5,cy+9); g.lineTo(l-5,cy+9); g.closePath(); g.fill();
-      g.beginPath(); g.moveTo(l+w,cy+4); g.lineTo(l+w+5,cy+9); g.lineTo(l+w-5,cy+9); g.closePath(); g.fill();
+      const l=OX+LEFT+X(t._start), w=barW(t._start,t._end), sh=Math.round(ROW*0.31);
+      g.fillStyle='#334155'; g.fillRect(l,cy-sh/2,w,sh);
+      g.beginPath(); g.moveTo(l,cy+sh/2); g.lineTo(l+5,cy+sh/2+5); g.lineTo(l-5,cy+sh/2+5); g.closePath(); g.fill();
+      g.beginPath(); g.moveTo(l+w,cy+sh/2); g.lineTo(l+w+5,cy+sh/2+5); g.lineTo(l+w-5,cy+sh/2+5); g.closePath(); g.fill();
     } else if(t.type==='milestone'){
-      const cx=OX+LEFT+X(t._start)+S.pxPerDay/2;
+      const cx=OX+LEFT+X(t._start)+S.pxPerDay/2, msz=Math.round(ROW*0.47/2);
       g.save(); g.translate(cx,cy); g.rotate(Math.PI/4);
-      g.fillStyle=color; g.fillRect(-7,-7,14,14); g.restore();
+      g.fillStyle=color; g.fillRect(-msz,-msz,msz*2,msz*2); g.restore();
       g.font=F(11,'bold'); g.fillStyle='#92400e'; g.textAlign='left';
-      g.fillText(clip(t.name,150,g), cx+13, cy);
+      g.fillText(clip(t.name,150,g), cx+msz+6, cy);
     } else {
       const l=OX+LEFT+X(t._start), w=barW(t._start,t._end);
-      roundRect(g,l,cy-8,w,16,4); g.fillStyle=color; g.fill();
+      roundRect(g,l,cy-bh/2,w,bh,bh*0.25); g.fillStyle=color; g.fill();
       const pct=Math.max(0,Math.min(100,t.progress||0));
-      if(pct>0){ const pw=w*pct/100; roundRect(g,l,cy-8,Math.max(2,pw),16,4);
+      if(pct>0){ const pw=w*pct/100; roundRect(g,l,cy-bh/2,Math.max(2,pw),bh,bh*0.25);
         g.fillStyle='rgba(0,0,0,.26)'; g.fill(); }
       g.font=F(11,'bold'); g.textAlign='left'; g.fillStyle='#ffffff';
       if(w>110) g.fillText(pct+'%', l+7, cy);
@@ -1421,7 +1444,7 @@ function exportPNG(){
     // 基线
     if(S.showBaseline && t._bs!==null && t._be!==null && t.type!=='summary'){
       const l=OX+LEFT+X(t._bs), w=barW(t._bs,t._be);
-      g.fillStyle='#94A3B8'; g.fillRect(l, cy+5, w, 4);
+      g.fillStyle='#94A3B8'; g.fillRect(l, cy+Math.round(ROW*0.19), w, Math.max(3,Math.round(ROW*0.16)));
     }
   });
 
@@ -1436,15 +1459,17 @@ function exportPNG(){
       else if(d.type==='FF'){ x1=OX+LEFT+X(p._end)+barW(p._start,p._end); y1=py; x2=OX+LEFT+X(t._end)+barW(t._start,t._end); y2=sy; }
       else { x1=OX+LEFT+X(p._end)+barW(p._start,p._end); y1=py; x2=OX+LEFT+X(t._start); y2=sy; }
       const crit=S.showCritical&&t.critical&&p.critical;
-      g.strokeStyle=crit?'#dc2626':'#64748b'; g.lineWidth=crit?1.6:1;
+      const lw=depWidth(crit);
+      g.strokeStyle=crit?'#dc2626':'#64748b'; g.lineWidth=lw;
       g.beginPath(); g.moveTo(x1,y1);
       const off=9;
       if(Math.abs(y2-y1)<1) g.lineTo(x2,y2);
       else if(x2>x1+off*2){ g.lineTo(x1+off,y1); g.lineTo(x1+off,y2); g.lineTo(x2,y2); }
       else { const mid=Math.max(x1,x2)+off*2.2; g.lineTo(mid,y1); g.lineTo(mid,y2); g.lineTo(x2,y2); }
       g.stroke();
-      // 箭头
-      g.beginPath(); g.moveTo(x2,y2); g.lineTo(x2-6,y2-3.5); g.lineTo(x2-6,y2+3.5); g.closePath();
+      // 箭头（尺寸随线宽缩放）
+      const as=2.2+1.9*lw;
+      g.beginPath(); g.moveTo(x2,y2); g.lineTo(x2-as,y2-as*0.58); g.lineTo(x2-as,y2+as*0.58); g.closePath();
       g.fillStyle=crit?'#dc2626':'#64748b'; g.fill();
     }));
   }

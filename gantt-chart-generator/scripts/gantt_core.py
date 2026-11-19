@@ -72,11 +72,12 @@ COLUMN_ALIASES: Dict[str, List[str]] = {
     "priority":   ["priority", "优先级"],
 }
 
-# 默认调色板（高对比、印刷友好）
+# 自动配色调色板（按顶级阶段分组循环使用）。
+# 刻意避开语义色：关键路径红 #DC2626、已完成绿 #059669、里程碑琥珀 #B45309、摘要深灰 #334155，
+# 保证自动配色永不与状态色冲突，相邻阶段色相差拉开。
 PALETTE = [
-    "#3B82F6", "#10B981", "#F59E0B", "#8B5CF6", "#EC4899",
-    "#06B6D4", "#EF4444", "#84CC16", "#F97316", "#6366F1",
-    "#14B8A6", "#A855F7", "#EAB308", "#0EA5E9", "#22C55E",
+    "#2563EB", "#0891B2", "#7C3AED", "#0D9488", "#DB2777",
+    "#4F46E5", "#0284C7", "#9333EA", "#C026D3", "#65A30D",
 ]
 
 # 状态色
@@ -834,9 +835,17 @@ def build_model(rows: List[Dict[str, Any]],
     cal = CalendarIndex(anchors, cal_wd, cal_hol)
     cpm = compute_cpm(tasks, cal)
 
-    # 颜色分配
-    color_idx = 0
+    # 颜色自动分配：按「顶级阶段」分组着色（同一阶段的任务共用一个色相，
+    # 视觉上自然成组，类似 MS Project 的按摘要着色）；
+    # 关键路径 / 已完成 / 里程碑 / 摘要 始终使用固定语义色，不受分组影响。
+    # 用户通过 color 列显式指定的颜色优先级最高。
+    lvls = [t.get("level") if isinstance(t.get("level"), int) else 0 for t in tasks]
+    top_lvl = min(lvls) if lvls else 0
+    group_idx = -1
     for t in tasks:
+        lvl = t.get("level") if isinstance(t.get("level"), int) else 0
+        if lvl <= top_lvl:
+            group_idx += 1
         if not t.get("color"):
             if t["type"] == TYPE_SUMMARY:
                 t["color"] = COLOR_SUMMARY
@@ -847,8 +856,7 @@ def build_model(rows: List[Dict[str, Any]],
             elif t.get("progress", 0) >= 100:
                 t["color"] = COLOR_DONE
             else:
-                t["color"] = PALETTE[color_idx % len(PALETTE)]
-                color_idx += 1
+                t["color"] = PALETTE[group_idx % len(PALETTE)]
 
     all_starts = [t["start"] for t in tasks if t.get("start")]
     all_ends = [t["end"] for t in tasks if t.get("end")]
