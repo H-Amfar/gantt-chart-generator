@@ -59,6 +59,17 @@
   button.tb.ghost{border:1px solid var(--line);background:var(--bg)}
   button.tb.ghost:hover{border-color:var(--accent)}
   .sep{width:1px;height:20px;background:var(--line);margin:0 4px}
+  .export-wrap{position:relative;display:inline-block}
+  .export-menu{position:absolute;top:calc(100% + 4px);right:0;background:var(--bg);
+    border:1px solid var(--line);border-radius:var(--radius);min-width:190px;padding:6px;
+    box-shadow:0 8px 24px rgba(15,23,42,.14);display:none;z-index:60}
+  .export-menu.open{display:block}
+  .export-menu button{display:flex;align-items:center;gap:8px;width:100%;padding:7px 10px;
+    border:none;background:none;border-radius:6px;font-family:var(--font);font-size:12.5px;
+    color:var(--text);cursor:pointer;text-align:left;transition:background .12s}
+  .export-menu button:hover{background:var(--bg-hover)}
+  .export-menu .fmt{margin-left:auto;font-size:10px;color:var(--text-3);background:var(--bg-soft);
+    border:1px solid var(--line);border-radius:4px;padding:1px 6px;letter-spacing:.5px}
   .switch{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--text-2);
     cursor:pointer;padding:4px 8px;border-radius:6px;user-select:none}
   .switch:hover{background:var(--bg-soft)}
@@ -302,7 +313,18 @@
     <label class="switch"><input type="checkbox" id="swWeekend" checked>周末底色</label>
     <div class="spacer"></div>
     <button class="tb ghost" id="btnHelp">? 操作说明</button>
-    <button class="tb ghost" id="btnPng">导出 PNG</button>
+    <div class="export-wrap">
+      <button class="tb ghost" id="btnExport">导出 ▾</button>
+      <div class="export-menu" id="exportMenu">
+        <button data-fmt="png">高清图片<span class="fmt">PNG</span></button>
+        <button data-fmt="word">Word 文档<span class="fmt">DOC</span></button>
+        <button data-fmt="excel">Excel 表格<span class="fmt">XLS</span></button>
+        <button data-fmt="csv">CSV 数据<span class="fmt">CSV</span></button>
+        <button data-fmt="txt">文本报告<span class="fmt">TXT</span></button>
+        <button data-fmt="json">JSON 模型<span class="fmt">JSON</span></button>
+        <button data-fmt="gantt">GANTT 项目文件<span class="fmt">GANTT</span></button>
+      </div>
+    </div>
     <button class="tb ghost" id="btnPrint">打印</button>
   </div>
 
@@ -1335,7 +1357,7 @@ function showHelp(){
         <div><span class="hk">悬停</span>任务条 —— 查看完整信息（日期、工期、进度、总浮动、基线）</div>
         <div><span class="hk">▲▼</span>摘要任务前的箭头 —— 折叠/展开子任务</div>
         <div><span class="hk">视图</span>日/周/月/季 + 缩放 —— 时间轴粒度与密度</div>
-        <div><span class="hk">导出 PNG</span>导出当前视图为高清图片，可直接插入 Word / PPT</div>
+        <div><span class="hk">导出 ▾</span>一键导出 PNG / Word / Excel / CSV / TXT / JSON / GANTT 七种格式</div>
       </div>
       <div class="locked-note" style="margin-top:12px">
         提示：编辑修改保存在当前页面（刷新后恢复原始数据）。需要固化修改时，可在对话框里核好日期后告诉我，我会更新源数据重新生成；或直接改 CSV/Excel 后重新构建。
@@ -1347,6 +1369,119 @@ function showHelp(){
     </div>`);
   MODAL.box.querySelector('#ef-ok').onclick=closeModal;
   document.onkeydown=e=>{ if(e.key==='Escape') closeModal(); };
+}
+
+/* ---------------- 多格式导出（全部离线、无外部依赖） ---------------- */
+const EXP_BASE=(DATA.project.name||'项目进度计划').replace(/[\\/:*?"<>|]/g,'_');
+const EXP_HEAD=['WBS','任务名称','类型','开始日期','结束日期','工期','进度','负责人','前置任务','基线开始','基线结束','备注','关键路径','总浮动(天)'];
+function download(name,content,mime){
+  const blob=new Blob([content],{type:mime+';charset=utf-8'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob); a.download=name;
+  document.body.appendChild(a); a.click();
+  setTimeout(()=>{URL.revokeObjectURL(a.href); a.remove();},800);
+}
+function xmlEsc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+function depStr(t){
+  if(!t.deps||!t.deps.length) return '';
+  return t.deps.map(d=>(d.type==='FS'&&!(d.lag>0))?d.id:(d.id+':'+d.type+':'+(d.lag||0))).join(',');
+}
+function exportRows(){
+  return DATA.tasks.map(t=>[
+    t.wbs||'', t.name||'',
+    t.type==='milestone'?'里程碑':(t.type==='summary'?'摘要':'任务'),
+    t.start||'', t.end||'', t.duration||0,
+    Math.round(t.progress||0)+'%', t.assignee||'', depStr(t),
+    (t.baseline&&t.baseline.start)||'', (t.baseline&&t.baseline.end)||'',
+    t.notes||'', t.critical?'是':'', (t.total_float!=null?t.total_float:'')
+  ]);
+}
+function csvEsc(v){v=String(v);return /[",\n\r]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v}
+function exportCSV(){
+  const lines=[EXP_HEAD,...exportRows()].map(r=>r.map(csvEsc).join(','));
+  download(EXP_BASE+'.csv','\ufeff'+lines.join('\r\n'),'text/csv');
+  toast('CSV 已导出');
+}
+/* 中文按 2 列宽对齐 */
+function padCJK(v,w){
+  v=String(v); let len=0,out='';
+  for(const ch of v){ const cw=ch.charCodeAt(0)>0x2E7F?2:1;
+    if(len+cw>w) break; out+=ch; len+=cw; }
+  while(len<w){ out+=' '; len++; }
+  return out;
+}
+function exportTXT(){
+  const w=[8,22,6,11,11,6,7,9,14,11,11,16,6,8];
+  const line=r=>r.map((v,i)=>padCJK(v,w[i])).join('  ');
+  const sep=w.map(x=>'-'.repeat(x)).join('  ');
+  const L=[];
+  L.push(DATA.project.name||'项目进度计划');
+  L.push((DATA.project.subtitle||'')+'   计划周期 '+DATA.project.start+' ~ '+DATA.project.end+
+    '   任务 '+DATA.project.taskCount+' · 里程碑 '+DATA.project.milestoneCount+' · 关键任务 '+DATA.project.criticalCount);
+  L.push('导出时间 '+(DATA.generatedAt||'')+'   关键路径 = 总浮动时间为 0 的任务（CPM 计算）');
+  L.push(sep); L.push(line(EXP_HEAD)); L.push(sep);
+  exportRows().forEach(r=>L.push(line(r)));
+  L.push(sep);
+  download(EXP_BASE+'.txt',L.join('\r\n'),'text/plain');
+  toast('TXT 已导出');
+}
+function exportJSON(){
+  download(EXP_BASE+'.json',JSON.stringify(DATA,null,2).replace(/</g,'\\u003c'),'application/json');
+  toast('JSON 模型已导出');
+}
+function exportGantt(){
+  /* .gantt 为 JSON 格式的项目文件，可交给 build.py 再次导入排程 */
+  download(EXP_BASE+'.gantt',JSON.stringify(DATA,null,2).replace(/</g,'\\u003c'),'application/json');
+  toast('GANTT 项目文件已导出（可再次导入）');
+}
+function exportExcel(){
+  const rows=[EXP_HEAD,...exportRows()];
+  const widths=[8,26,7,12,12,7,8,10,16,12,12,20,8,9];
+  let xml='<?xml version="1.0" encoding="UTF-8"?><?mso-application progid="Excel.Sheet"?>'+
+    '<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" '+
+    'xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">'+
+    '<Styles><Style ss:ID="h"><Font ss:Bold="1" ss:FontName="Microsoft YaHei" ss:Size="11"/>'+
+    '<Interior ss:Color="#F1F5F9" ss:Pattern="Solid"/><Alignment ss:Vertical="Center"/></Style>'+
+    '<Style ss:ID="d"><Font ss:FontName="Microsoft YaHei" ss:Size="10"/></Style></Styles>'+
+    '<Worksheet ss:Name="'+xmlEsc((DATA.project.name||'进度计划').slice(0,28))+'"><Table>';
+  widths.forEach(x=>xml+='<Column ss:Width="'+(x*7.5)+'"/>');
+  rows.forEach((r,ri)=>{
+    xml+='<Row'+(ri===0?' ss:Height="22"':'')+'>';
+    r.forEach(v=>{ xml+='<Cell ss:StyleID="'+(ri===0?'h':'d')+'"><Data ss:Type="String">'+
+      xmlEsc(v)+'</Data></Cell>'; });
+    xml+='</Row>';
+  });
+  xml+='</Table></Worksheet></Workbook>';
+  download(EXP_BASE+'.xls','\ufeff'+xml,'application/vnd.ms-excel');
+  toast('Excel 已导出（.xls，Excel/WPS 均可打开）');
+}
+function exportWord(){
+  const rows=exportRows();
+  let html='<html xmlns:o="urn:schemas-microsoft-com:office:office" '+
+    'xmlns:w="urn:schemas-microsoft-com:office:word"><head><meta charset="utf-8">'+
+    '<title>'+xmlEsc(EXP_BASE)+'</title><style>'+
+    'body{font-family:"Microsoft YaHei",sans-serif;font-size:10.5pt;color:#0f172a}'+
+    'h1{font-size:16pt;margin:0 0 4px}p{color:#475569;font-size:10pt;margin:4px 0 12px}'+
+    'table{border-collapse:collapse;width:100%}'+
+    'th{background:#f1f5f9;border:1px solid #cbd5e1;padding:5px 6px;font-size:9.5pt}'+
+    'td{border:1px solid #e2e8f0;padding:4px 6px;font-size:9.5pt}'+
+    '.crit{color:#dc2626;font-weight:bold}.ms{color:#b45309}.sum{font-weight:bold}</style></head><body>';
+  html+='<h1>'+xmlEsc(DATA.project.name||'项目进度计划')+'</h1>';
+  html+='<p>'+xmlEsc(DATA.project.subtitle||'')+' 计划周期 '+DATA.project.start+' ~ '+
+    DATA.project.end+'，共 '+DATA.project.taskCount+' 个任务、'+DATA.project.milestoneCount+
+    ' 个里程碑，其中关键任务 '+DATA.project.criticalCount+' 个。</p>';
+  html+='<table><tr>'+EXP_HEAD.map(h=>'<th>'+h+'</th>').join('')+'</tr>';
+  rows.forEach(r=>{
+    const rowCls=r[2]==='摘要'?' class="sum"':'';
+    html+='<tr'+rowCls+'>'+r.map((v,i)=>{
+      const cls=(i===12&&v==='是')?' class="crit"':(i===2&&v==='里程碑'?' class="ms"':'');
+      return '<td'+cls+'>'+xmlEsc(v)+'</td>';
+    }).join('')+'</tr>';
+  });
+  html+='</table><p style="color:#94a3b8;font-size:9pt">导出自横道图生成器 · '+
+    (DATA.generatedAt||'')+'</p></body></html>';
+  download(EXP_BASE+'.doc','\ufeff'+html,'application/msword');
+  toast('Word 文档已导出（.doc，Word/WPS 均可打开）');
 }
 
 /* ---------------- 导出 PNG ---------------- */
@@ -1550,7 +1685,15 @@ function bindUI(){
   document.getElementById('swBaseline').onchange=e=>{ S.showBaseline=e.target.checked; render(); };
   document.getElementById('swDeps').onchange=e=>{ S.showDeps=e.target.checked; render(); };
   document.getElementById('swWeekend').onchange=e=>{ S.showWeekend=e.target.checked; render(); };
-  document.getElementById('btnPng').onclick=exportPNG;
+  const exMenu=document.getElementById('exportMenu');
+  document.getElementById('btnExport').onclick=e=>{e.stopPropagation(); exMenu.classList.toggle('open');};
+  document.addEventListener('click',e=>{ if(!exMenu.contains(e.target)) exMenu.classList.remove('open'); });
+  const EXPORTERS={png:exportPNG,word:exportWord,excel:exportExcel,
+                   csv:exportCSV,txt:exportTXT,json:exportJSON,gantt:exportGantt};
+  exMenu.querySelectorAll('button').forEach(b=>b.onclick=()=>{
+    exMenu.classList.remove('open');
+    const fn=EXPORTERS[b.dataset.fmt]; if(fn) fn();
+  });
   document.getElementById('btnPrint').onclick=()=>window.print();
 
   // 左右垂直同步

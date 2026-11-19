@@ -309,7 +309,7 @@ def load_tasks(path: str) -> List[Dict[str, Any]]:
     ext = os.path.splitext(path)[1].lower()
     if ext in (".xlsx", ".xlsm"):
         return read_xlsx(path)
-    if ext == ".json":
+    if ext in (".json", ".gantt"):   # .gantt 为页面导出的 JSON 项目文件
         with open(path, "r", encoding="utf-8") as f:
             data = json.load(f)
         if isinstance(data, dict):
@@ -333,6 +333,16 @@ def normalize_rows(rows: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         if not item.get("name"):
             continue
         is_ms = _norm_bool(item.get("milestone", False))
+        # 页面导出的模型 JSON（.gantt）里 deps 已是结构化字典列表，直接沿用；
+        # 普通表格输入则是字符串，交给 _parse_deps 解析
+        _raw_deps = item.get("deps")
+        if isinstance(_raw_deps, list) and _raw_deps and isinstance(_raw_deps[0], dict):
+            deps_parsed = [{"ref": str(d.get("id") or d.get("ref") or ""),
+                             "type": str(d.get("type") or "FS").upper(),
+                             "lag": d.get("lag") or 0}
+                            for d in _raw_deps]
+        else:
+            deps_parsed = _parse_deps(_raw_deps)
         t: Dict[str, Any] = {
             "id": str(item.get("id") or "").strip(),
             "wbs": str(item.get("wbs") or "").strip(),
@@ -345,7 +355,7 @@ def normalize_rows(rows: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
             "progress": _norm_progress(item.get("progress")),
             "assignee": str(item.get("assignee") or "").strip(),
             "resources": str(item.get("resources") or "").strip(),
-            "deps_raw": _parse_deps(item.get("deps")),
+            "deps_raw": deps_parsed,
             "deptype": str(item.get("deptype") or "").strip().upper(),
             "lag": item.get("lag"),
             "color": str(item.get("color") or "").strip(),

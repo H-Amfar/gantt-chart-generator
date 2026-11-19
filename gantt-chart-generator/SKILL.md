@@ -1,6 +1,6 @@
 ---
 name: gantt-chart-generator
-description: 生成横道图（甘特图）与项目进度计划。当用户需要制作/生成横道图、甘特图、项目进度表、施工进度计划、排期表、里程碑计划、工程进度网络图，或需要按任务依赖关系（FS/SS/FF/SF）自动排程、标注关键节点与里程碑、计算关键路径与浮动时间、对比基线计划、导出进度图表（HTML/PNG）时使用。支持从对话描述、CSV、Excel(.xlsx)、JSON 生成，功能对标 Microsoft Project。
+description: 生成横道图（甘特图）与项目进度计划。当用户需要制作/生成横道图、甘特图、项目进度表、施工进度计划、排期表、里程碑计划、工程进度网络图，或需要按任务依赖关系（FS/SS/FF/SF）自动排程、标注关键节点与里程碑、计算关键路径与浮动时间、对比基线计划、导出进度图表（HTML/PNG/Word/Excel/CSV/TXT/JSON/GANTT）时使用。支持从对话描述、CSV、Excel(.xlsx)、JSON 生成，功能对标 Microsoft Project。
 ---
 
 # 横道图生成器（Gantt Chart Generator）
@@ -8,7 +8,7 @@ description: 生成横道图（甘特图）与项目进度计划。当用户需�
 把项目任务清单渲染成专业横道图，支持日期自适应时间轴、关键节点（里程碑）、
 任务依赖与关键路径分析。产出两种形态：
 
-- **交互式 HTML**：单文件、离线可用、可缩放、双击编辑任务、拖拽改期、可添加/删除任务、可导出 PNG
+- **交互式 HTML**：单文件、离线可用、可缩放、双击编辑任务、拖拽改期、可添加/删除任务，可导出 PNG / Word / Excel / CSV / TXT / JSON / GANTT 七种格式
 - **静态 PNG**：用于插入 Word / PPT / 汇报材料
 
 （中文别称：甘特图、条状图、进度条图、工程进度横道图）
@@ -48,7 +48,7 @@ SKILL="<本 skill 目录>/scripts"
 ```
 
 > 若无 matplotlib，`--png` 会被自动跳过并提示，HTML 仍正常产出。
-> HTML 页面右上角自带「导出 PNG」按钮，可在浏览器里一键出图。
+> HTML 页面右上角自带「导出 ▾」菜单：PNG 高清图、Word 文档、Excel 表格、CSV、TXT 报告、JSON 模型、GANTT 项目文件（.gantt 可再次交给 build.py 导入排程）一键导出。
 
 ### 依赖安装（首次使用或换机器）
 
@@ -169,7 +169,7 @@ python -m pip install -i https://mirrors.aliyun.com/pypi/simple/ --trusted-host 
 | 悬浮任务条 | 查看工期、进度、负责人、前置、总浮动、基线 |
 | 开关项 | 关键路径 / 基线 / 依赖线 / 周末底色 |
 | 「? 操作说明」 | 查看全部交互操作指引 |
-| 导出 PNG / 打印 | 输出图片或 A3 横版打印 |
+| 「导出 ▾」菜单 | PNG 高清图 / Word(.doc) / Excel(.xls) / CSV / TXT / JSON 模型 / GANTT 项目文件；「打印」输出 A3 横版 |
 
 > 注意：页面内编辑保存在当前浏览器会话中（刷新后恢复源数据）。需要固化修改时，把调整后的日期告诉我，由我更新 CSV/Excel 后重新生成；或直接在编辑窗口核对日期后修改源文件。
 
